@@ -1,0 +1,21 @@
+# ESP-IDF build output (includes the host-side B+ tree test in build/host_btree_test)
+build/
+# stray build dir from running idf.py inside main/
+main/build/
+
+# menuconfig backup; sdkconfig itself is tracked so the exact config is reproducible
+sdkconfig.old
+
+# component manager downloads (dependencies.lock, if it appears, should be committed)
+managed_components/
+
+# editor / IDE
+.vscode/
+.idea/
+*.swp
+*~
+.cache/
+compile_commands.json
+
+# OS
+.DS_Store
