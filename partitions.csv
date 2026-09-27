@@ -1,0 +1,8 @@
+# Name,  Type, SubType, Offset,    Size
+nvs,       data, nvs,     0x9000,    0x6000
+phy_init,  data, phy,     0xF000,    0x1000
+factory,   app,  factory, 0x10000,   0x200000
+# dbmeta: superblock / checkpoints (log head/tail, index snapshot pointer, format version)
+dbmeta,    data, 0x40,    0x210000,  0x10000
+# log: the WAL *is* the data store — circular append-only log of put/del records
+log,       data, 0x41,    0x220000,  0xDE0000
