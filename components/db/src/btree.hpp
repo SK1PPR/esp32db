@@ -29,9 +29,13 @@
 //     When the SRAM pool is used up they spill to a PSRAM pool.
 //   - leaves -> mem::Region::Psram. One PSRAM touch per lookup.
 //
-// Capacity is fixed by the pool sizes below: 8192 leaves = 4 MB PSRAM,
-// up to 336k keys packed (increasing keys), ~230k with random keys. Inner
-// pools are sized for the worst case of ~leaves/11 nodes.
+// Memory: init() builds its node pools from the arenas main.cpp ballooned
+// with mem::balloon() (all RAM left after the rest of startup). Leaves and
+// spilled inner nodes share the PSRAM pool (same 512 B size), so there's no
+// leaf/inner split to guess. Capacity is then fixed until reboot, which is
+// what lets can_insert() promise an insert won't run out of nodes.
+// Roughly: 7 MB of PSRAM -> ~14k nodes -> ~570k keys packed (increasing
+// keys), ~430k with random keys.
 //
 // Not thread-safe; db.cpp serialises access.
 
@@ -50,10 +54,7 @@ struct ValueRef {
     uint32_t offset;
 };
 
-constexpr size_t NODE_SIZE = 512;          // multiple of the cache line
-constexpr size_t LEAF_NODES = 8192;        // PSRAM: 4 MB
-constexpr size_t INNER_SRAM_NODES = 128;   // internal SRAM: 64 KB
-constexpr size_t INNER_PSRAM_NODES = 768;  // PSRAM overflow for inner nodes: 384 KB
+constexpr size_t NODE_SIZE = mem::BLOCK_SIZE;  // one node per balloon block
 
 namespace bt {
 struct Node;
@@ -63,7 +64,9 @@ struct Inner;
 
 class BTree {
 public:
-    esp_err_t init();  // allocates the node pools
+    // Builds the node pools on the mem::balloon() arenas.
+    // ESP_ERR_INVALID_STATE if mem::balloon() hasn't run.
+    esp_err_t init();
 
     bool find(Key key, ValueRef *out) const;  // out may be nullptr (existence check)
     // Upsert. Updating an existing key never allocates. Inserting a new key
@@ -82,24 +85,28 @@ public:
 
     uint32_t size() const { return count_; }
     uint32_t height() const { return height_; }  // 0 = empty, 1 = root is a leaf
-    uint32_t leaf_nodes() const { return leaves_ ? leaves_->in_use() : 0; }
-    uint32_t inner_sram_nodes() const { return inner_sram_ ? inner_sram_->in_use() : 0; }
-    uint32_t inner_psram_nodes() const { return inner_psram_ ? inner_psram_->in_use() : 0; }
+    uint32_t leaf_nodes() const { return leaf_nodes_; }
+    uint32_t inner_sram_nodes() const { return inner_sram_nodes_; }
+    uint32_t inner_psram_nodes() const { return inner_psram_nodes_; }
+    uint32_t sram_node_capacity() const { return sram_ ? sram_->capacity() : 0; }
+    uint32_t psram_node_capacity() const { return psram_ ? psram_->capacity() : 0; }
 
 private:
     bt::Leaf *new_leaf();
     bt::Inner *new_inner();
     void free_node(bt::Node *n);
-    size_t inner_free() const;
     bool has_room(size_t leaves, size_t inner) const;
     void rebalance_leaf(bt::Inner *parent, uint16_t idx);
     void rebalance_inner(bt::Inner *parent, uint16_t idx);
     void merge_leaves(bt::Inner *parent, uint16_t idx);  // child[idx] absorbs child[idx+1]
     void merge_inners(bt::Inner *parent, uint16_t idx);
 
-    std::optional<mem::Pool> leaves_;       // created in init(), not at static
-    std::optional<mem::Pool> inner_sram_;   // construction: PSRAM may not be
-    std::optional<mem::Pool> inner_psram_;  // in the heap yet at that point
+    // Created in init(), once the arenas exist.
+    std::optional<mem::Pool> sram_;   // inner nodes only (hot)
+    std::optional<mem::Pool> psram_;  // leaves + inner nodes that didn't fit in SRAM
+    uint32_t leaf_nodes_ = 0;
+    uint32_t inner_sram_nodes_ = 0;
+    uint32_t inner_psram_nodes_ = 0;
     bt::Node *root_ = nullptr;
     bt::Leaf *rightmost_ = nullptr;  // leaf holding the largest keys (append fast path)
     uint32_t count_ = 0;

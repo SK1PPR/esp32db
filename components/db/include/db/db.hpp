@@ -27,8 +27,10 @@ using Key = uint64_t;
 // 12 B sector header. Checked against the real layout in kvlog.hpp.
 constexpr size_t MAX_VALUE_LEN = 4096 - 12 - 24;
 
-esp_err_t open();   // mount dbmeta + log, replay the log to rebuild the index,
-                    // start the background compaction task
+// Mount dbmeta + log, build the index on the mem::balloon() arenas, replay
+// the log, start background compaction. main.cpp must call mem::balloon()
+// first (ESP_ERR_INVALID_STATE otherwise).
+esp_err_t open();
 esp_err_t close();  // stop compaction; no further calls allowed
 
 // ESP_ERR_NO_MEM: database full (log space or index nodes).
@@ -49,9 +51,11 @@ esp_err_t format();
 struct Stats {
     uint32_t keys;
     uint32_t tree_height;
-    uint32_t leaf_nodes;         // PSRAM
-    uint32_t inner_sram_nodes;   // internal SRAM (hot)
-    uint32_t inner_psram_nodes;  // spilled to PSRAM
+    uint32_t leaf_nodes;           // PSRAM
+    uint32_t inner_sram_nodes;     // internal SRAM (hot)
+    uint32_t inner_psram_nodes;    // spilled to PSRAM
+    uint32_t sram_node_capacity;   // pool sizes chosen by ballooning at open()
+    uint32_t psram_node_capacity;
     uint32_t log_sectors;
     uint32_t log_free_sectors;
 };

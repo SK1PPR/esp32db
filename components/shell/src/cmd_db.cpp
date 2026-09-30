@@ -113,6 +113,9 @@ static int cmd_dbstat(int, char **)
     printf("tree height: %" PRIu32 "\n", s.tree_height);
     printf("tree nodes:  %" PRIu32 " leaves, %" PRIu32 " inner in SRAM, %" PRIu32 " inner in PSRAM\n",
            s.leaf_nodes, s.inner_sram_nodes, s.inner_psram_nodes);
+    printf("node pools:  SRAM %" PRIu32 "/%" PRIu32 ", PSRAM %" PRIu32 "/%" PRIu32 " used\n",
+           s.inner_sram_nodes, s.sram_node_capacity, s.leaf_nodes + s.inner_psram_nodes,
+           s.psram_node_capacity);
     printf("log sectors: %" PRIu32 " free / %" PRIu32 " total\n", s.log_free_sectors, s.log_sectors);
     return 0;
 }

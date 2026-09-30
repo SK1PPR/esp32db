@@ -1,6 +1,6 @@
-// pool.cpp — TODO: carve base_ into block_count blocks, thread them onto
-// free_list_, pop/push in alloc()/free(). Add a mutex (or make it per-task)
-// once more than one task touches the tree.
+// pool.cpp — slab carved into block_count blocks, threaded onto an intrusive
+// free list; alloc()/free() pop/push its head. Not thread-safe: the owner
+// serialises access (the B+ tree runs under db.cpp's mutex).
 
 #include <cassert>
 
@@ -9,7 +9,7 @@
 namespace mem {
 
 Pool::Pool(Region region, size_t block_size, size_t block_count)
-    : block_size_(block_size), count_(block_count)
+    : block_size_(block_size), count_(block_count), owns_base_(true)
 {
     assert(block_size >= sizeof(void *) && block_size % alignof(void *) == 0);
 
@@ -18,18 +18,35 @@ Pool::Pool(Region region, size_t block_size, size_t block_count)
         count_ = 0;  // empty pool: alloc() just returns nullptr
         return;
     }
+    thread_free_list();
+}
 
-    char *p = static_cast<char *>(base_);
-    for (size_t i = 0; i + 1 < block_count; ++i) {
-        *reinterpret_cast<void **>(p + i * block_size) = p + (i + 1) * block_size;
+Pool::Pool(void *base, size_t bytes, size_t block_size)
+    : base_(base), block_size_(block_size), count_(base ? bytes / block_size : 0), owns_base_(false)
+{
+    assert(block_size >= sizeof(void *) && block_size % alignof(void *) == 0);
+
+    if (count_ == 0) {
+        return;
     }
-    *reinterpret_cast<void **>(p + (block_count - 1) * block_size) = nullptr;
+    thread_free_list();
+}
+
+void Pool::thread_free_list()
+{
+    char *p = static_cast<char *>(base_);
+    for (size_t i = 0; i + 1 < count_; ++i) {
+        *reinterpret_cast<void **>(p + i * block_size_) = p + (i + 1) * block_size_;
+    }
+    *reinterpret_cast<void **>(p + (count_ - 1) * block_size_) = nullptr;
     free_list_ = base_;
 }
 
 Pool::~Pool()
 {
-    mem::free(base_);
+    if (owns_base_) {
+        mem::free(base_);
+    }
     base_ = nullptr;
     free_list_ = nullptr;
 }

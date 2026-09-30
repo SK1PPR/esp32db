@@ -270,9 +270,17 @@ Stats stats()
         return Stats{};
     }
     Lock lock;
-    return Stats{s_tree.size(),         s_tree.height(),       s_tree.leaf_nodes(),
-                 s_tree.inner_sram_nodes(), s_tree.inner_psram_nodes(), s_log.sector_count(),
-                 s_log.free_sectors()};
+    Stats s{};
+    s.keys = s_tree.size();
+    s.tree_height = s_tree.height();
+    s.leaf_nodes = s_tree.leaf_nodes();
+    s.inner_sram_nodes = s_tree.inner_sram_nodes();
+    s.inner_psram_nodes = s_tree.inner_psram_nodes();
+    s.sram_node_capacity = s_tree.sram_node_capacity();
+    s.psram_node_capacity = s_tree.psram_node_capacity();
+    s.log_sectors = s_log.sector_count();
+    s.log_free_sectors = s_log.free_sectors();
+    return s;
 }
 
 }  // namespace db

@@ -164,52 +164,55 @@ static Leaf *descend(Node *n, Key key, Path &path)
 
 esp_err_t BTree::init()
 {
-    leaves_.emplace(mem::Region::Psram, NODE_SIZE, LEAF_NODES);
-    inner_sram_.emplace(mem::Region::Internal, NODE_SIZE, INNER_SRAM_NODES);
-    inner_psram_.emplace(mem::Region::Psram, NODE_SIZE, INNER_PSRAM_NODES);
-    // The SRAM pool may legitimately be empty (inner nodes then all go to PSRAM).
-    return (leaves_->capacity() && inner_psram_->capacity()) ? ESP_OK : ESP_ERR_NO_MEM;
+    const mem::Arena psram = mem::arena(mem::Region::Psram);
+    const mem::Arena sram = mem::arena(mem::Region::Internal);
+    if (root_ || !psram.size) {
+        return ESP_ERR_INVALID_STATE;  // already in use, or mem::balloon() hasn't run
+    }
+    psram_.emplace(psram.base, psram.size, NODE_SIZE);
+    // The SRAM arena may legitimately be empty (inner nodes then all go to PSRAM).
+    sram_.emplace(sram.base, sram.size, NODE_SIZE);
+    return ESP_OK;
 }
 
 Leaf *BTree::new_leaf()
 {
-    Leaf *l = new (leaves_->alloc()) Leaf();  // never null: insert() checked has_room()
+    Leaf *l = new (psram_->alloc()) Leaf();  // never null: insert() checked has_room()
     l->is_leaf = 1;
+    ++leaf_nodes_;
     return l;
 }
 
 Inner *BTree::new_inner()
 {
-    void *p = inner_sram_->alloc();
+    void *p = sram_->alloc();
     const bool sram = p != nullptr;
     if (!sram) {
-        p = inner_psram_->alloc();
+        p = psram_->alloc();
     }
     Inner *in = new (p) Inner();
     in->in_sram = sram;
+    ++(sram ? inner_sram_nodes_ : inner_psram_nodes_);
     return in;
 }
 
 void BTree::free_node(Node *n)
 {
     if (n->is_leaf) {
-        leaves_->free(n);
-    } else if (n->in_sram) {
-        inner_sram_->free(n);
+        --leaf_nodes_;
     } else {
-        inner_psram_->free(n);
+        --(n->in_sram ? inner_sram_nodes_ : inner_psram_nodes_);
     }
+    (n->in_sram ? *sram_ : *psram_).free(n);
 }
 
-size_t BTree::inner_free() const
-{
-    return (inner_sram_->capacity() - inner_sram_->in_use()) +
-           (inner_psram_->capacity() - inner_psram_->in_use());
-}
-
+// Leaves can only come from PSRAM; inner nodes from SRAM first, then
+// whatever PSRAM the leaves leave over.
 bool BTree::has_room(size_t leaves, size_t inner) const
 {
-    return leaves_->capacity() - leaves_->in_use() >= leaves && inner_free() >= inner;
+    const size_t psram_free = psram_->capacity() - psram_->in_use();
+    const size_t sram_free = sram_->capacity() - sram_->in_use();
+    return psram_free >= leaves && sram_free + (psram_free - leaves) >= inner;
 }
 
 namespace {

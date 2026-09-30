@@ -15,6 +15,8 @@ static int cmd_mem(int argc, char **argv)
            mem::free_bytes(mem::Region::Internal), mem::largest_free_block(mem::Region::Internal));
     printf("psram:    %zu free (largest %zu)\n",
            mem::free_bytes(mem::Region::Psram), mem::largest_free_block(mem::Region::Psram));
+    printf("balloon:  internal %zu KB, psram %zu KB (held by the database)\n",
+           mem::arena(mem::Region::Internal).size / 1024, mem::arena(mem::Region::Psram).size / 1024);
     return 0;
 }
 
