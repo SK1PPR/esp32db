@@ -1,0 +1,19 @@
+menu "Key/value engine"
+
+    choice KV_ENGINE
+        prompt "Storage engine behind the kv:: API"
+        default KV_ENGINE_ESP32DB
+        help
+            One engine per firmware image. esp32db is this project's database;
+            the others exist so tools/bench.py can compare against them on
+            identical boards (see bench/sdkconfig.*).
+
+        config KV_ENGINE_ESP32DB
+            bool "esp32db (B+ tree + log, this project)"
+        config KV_ENGINE_FLASHDB
+            bool "FlashDB KVDB on raw flash (benchmark)"
+        config KV_ENGINE_SQLITE
+            bool "SQLite on FATFS + wear levelling (benchmark)"
+    endchoice
+
+endmenu

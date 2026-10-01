@@ -3898,6 +3898,17 @@ CONFIG_WL_SECTOR_SIZE_4096=y
 # default:
 CONFIG_WL_SECTOR_SIZE=4096
 # end of Wear Levelling
+
+#
+# Key/value engine
+#
+# default:
+CONFIG_KV_ENGINE_ESP32DB=y
+# default:
+# CONFIG_KV_ENGINE_FLASHDB is not set
+# default:
+# CONFIG_KV_ENGINE_SQLITE is not set
+# end of Key/value engine
 # end of Component config
 
 # default:
