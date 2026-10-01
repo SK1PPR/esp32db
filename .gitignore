@@ -19,3 +19,9 @@ compile_commands.json
 
 # OS
 .DS_Store
+
+# benchmark competitors, fetched by tools/fetch_third_party.sh
+third_party/
+# benchmark output from tools/bench.py
+bench_results/
+__pycache__/
