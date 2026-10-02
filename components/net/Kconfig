@@ -1,0 +1,13 @@
+menu "Networking"
+
+    config NET_WIFI
+        bool "WiFi station"
+        default n
+        help
+            Bring up the WiFi driver at boot (credentials from `wifi set`).
+            Off: net:: is compiled as stubs that report "off", the WiFi
+            driver isn't linked, and the RAM it would take at init goes to
+            the database balloon instead. Turn on for the distributed
+            database work.
+
+endmenu
