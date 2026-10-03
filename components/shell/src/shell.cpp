@@ -13,6 +13,7 @@ esp_err_t start()
     esp_console_repl_t *repl = nullptr;
     esp_console_repl_config_t repl_cfg = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
     repl_cfg.prompt = "db>";
+    repl_cfg.task_stack_size = 8192;  // SQLite builds run queries on this task (put/get/del/dbstat)
 
     esp_console_dev_uart_config_t uart_cfg = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_console_new_repl_uart(&uart_cfg, &repl_cfg, &repl));
@@ -20,6 +21,8 @@ esp_err_t start()
     esp_console_register_help_command();
     register_db_commands();
     register_sys_commands();
+    register_bench_commands();
+    register_net_commands();
 
     return esp_console_start_repl(repl);
 }

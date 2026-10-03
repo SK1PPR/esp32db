@@ -5,7 +5,9 @@
 
 namespace shell {
 
-void register_db_commands();   // put / get / del / dbstat
-void register_sys_commands();  // mem / reboot
+void register_db_commands();     // put / get / del / dbstat / format (+ compact)
+void register_sys_commands();    // mem / info / reboot
+void register_bench_commands();  // bench / race
+void register_net_commands();    // wifi
 
 }  // namespace shell
