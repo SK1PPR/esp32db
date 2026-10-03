@@ -1,0 +1,5 @@
+# Shared by every benchmark build (tools/fw.sh): sdkconfig.defaults + this +
+# bench/sdkconfig.<engine>. Same compiler settings for every engine.
+CONFIG_COMPILER_OPTIMIZATION_PERF=y
+# SQLite's WAL file name (kv.db-wal) isn't 8.3; harmless for the others.
+CONFIG_FATFS_LFN_HEAP=y

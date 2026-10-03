@@ -1,0 +1,4 @@
+CONFIG_KV_ENGINE_SQLITE=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions_sqlite.csv"
+# app_main runs kv::open() (FATFS mount + sqlite3_open), which overflows the default 3584.
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
